@@ -63,20 +63,39 @@ class ImageTextDataset(Dataset):
         return len(self.data)
 
     def _apply_augmentation(self, image: Image.Image) -> Image.Image:
-        """Áp dụng augmentation ngẫu nhiên cho ảnh khi đang train."""
-        from torchvision import transforms
+        """Áp dụng augmentation ngẫu nhiên cho ảnh khi đang train (dùng PIL thuần)."""
         import random
+        from PIL import ImageOps, ImageEnhance
 
-        aug = transforms.Compose([
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.15, hue=0.05),
-            transforms.RandomResizedCrop(
-                size=(image.height, image.width),
-                scale=(0.85, 1.0),
-                ratio=(0.9, 1.1),
-            ),
-        ])
-        return aug(image)
+        # Random horizontal flip
+        if random.random() < 0.5:
+            image = ImageOps.mirror(image)
+
+        # Color jitter: brightness
+        if random.random() < 0.5:
+            factor = random.uniform(0.8, 1.2)
+            image = ImageEnhance.Brightness(image).enhance(factor)
+
+        # Color jitter: contrast
+        if random.random() < 0.5:
+            factor = random.uniform(0.8, 1.2)
+            image = ImageEnhance.Contrast(image).enhance(factor)
+
+        # Color jitter: saturation
+        if random.random() < 0.5:
+            factor = random.uniform(0.85, 1.15)
+            image = ImageEnhance.Color(image).enhance(factor)
+
+        # Random crop (scale 85-100%)
+        if random.random() < 0.5:
+            w, h = image.size
+            scale = random.uniform(0.85, 1.0)
+            new_w, new_h = int(w * scale), int(h * scale)
+            left = random.randint(0, w - new_w)
+            top = random.randint(0, h - new_h)
+            image = image.crop((left, top, left + new_w, top + new_h)).resize((w, h), Image.BILINEAR)
+
+        return image
 
     def __getitem__(self, idx):
         row = self.data.iloc[idx]

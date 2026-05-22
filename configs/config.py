@@ -18,9 +18,9 @@ class Config:
     DATA_DIR = os.path.join(ROOT_DIR, 'data')
     IMAGE_DIR = os.path.join(DATA_DIR, 'images')
     CAPTIONS_FILE = (
-        os.path.join(DATA_DIR, 'captions.csv')
-        if os.path.exists(os.path.join(DATA_DIR, 'captions.csv'))
-        else os.path.join(DATA_DIR, 'caption.csv')
+        os.path.join(DATA_DIR, 'captions_vi_4000.csv')
+        if os.path.exists(os.path.join(DATA_DIR, 'captions_vi_4000.csv'))
+        else os.path.join(DATA_DIR, 'captions.csv')
     )
     OUTPUT_DIR = os.path.join(ROOT_DIR, 'outputs')
 
@@ -39,15 +39,15 @@ class Config:
     # Dùng classifier head thay vì cosine similarity (chỉ có hiệu lực khi checkpoint tồn tại)
     USE_CLASSIFIER_IN_INFERENCE = True
     # Ngưỡng sigmoid của classifier head
-    CLASSIFIER_THRESHOLD = 0.2343  # tối ưu từ validation set
+    CLASSIFIER_THRESHOLD = 0.2589  # tối ưu từ validation set (Youden's J)
 
     # ── Tham số huấn luyện (Training) ────────────────────────────────────────
     BATCH_SIZE = 16
-    # Learning rate cho classifier head
-    LEARNING_RATE = 2e-4
+    # Learning rate cho classifier head (giảm xuống để fine-tune tiếp từ checkpoint)
+    LEARNING_RATE = 5e-5
     # Learning rate nhỏ hơn cho các CLIP block được mở băng (fine-tune nhẹ)
-    CLIP_FINETUNE_LR = 5e-6
-    NUM_EPOCHS = 30
+    CLIP_FINETUNE_LR = 1e-6
+    NUM_EPOCHS = 20
 
     # Số transformer block cuối của CLIP sẽ được mở băng để fine-tune
     # 0 = đóng băng toàn bộ CLIP (nhanh nhưng kém linh hoạt)
@@ -59,7 +59,7 @@ class Config:
     SEED = 42
 
     # Early stopping: dừng nếu val loss không cải thiện sau N epoch
-    EARLY_STOPPING_PATIENCE = 5
+    EARLY_STOPPING_PATIENCE = 7
 
     # Hard-negative pairing: tự tạo thêm mẫu MISMATCH từ mỗi batch
     ENABLE_BATCH_NEGATIVES = True
