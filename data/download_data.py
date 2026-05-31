@@ -206,9 +206,9 @@ for idx, img_name in enumerate(selected):
         pbar.update(1)
         continue
         
-    # Pick a random caption and save
-    cap_en = random.choice(captions_en[img_name])
-    batch_rows.append((img_name, cap_en))
+    # Use all available captions for this image to maximize training variety
+    for cap_en in captions_en[img_name]:
+        batch_rows.append((img_name, cap_en))
     
     # Translate and write in batches
     if len(batch_rows) >= BATCH_SIZE or idx == len(selected) - 1:
