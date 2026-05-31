@@ -1,90 +1,215 @@
-# Phát hiện Không khớp Ảnh-Chữ (Image-Text Mismatch Detection - ITMD)
+# Image-Text Mismatch Detection (ITMD) Pipeline
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Một dự án Python HOÀN CHỈNH dùng để phát hiện xem một bức ảnh và câu chú thích (caption) của nó có khớp ý nghĩa với nhau hay không. Dự án này sử dụng phương pháp trí tuệ nhân tạo (AI) thông qua mô hình CLIP nổi tiếng của OpenAI (`openai/clip-vit-base-patch32`).
+Hệ thống học sâu hoàn chỉnh (End-to-End Deep Learning Pipeline) chuyên dụng cho tác vụ **Phát hiện Không khớp Ảnh-Chữ (Image-Text Mismatch Detection - ITMD)**. Dự án được tối ưu hóa để hỗ trợ cả mô hình CLIP tiếng Anh chuẩn và mô hình CLIP đa ngôn ngữ (chuyên tiếng Việt) nhờ khả năng chuyển đổi kiến trúc động linh hoạt.
 
-## 1. Tổng quan Dự án
+---
 
-Dự án này là một quy trình (pipeline) xử lý dữ liệu mạnh mẽ, bao gồm các chức năng:
-- Sử dụng mô hình CLIP đã được công ty mẹ dạy từ trước (pre-trained) để rút trích đặc trưng (tức là chuyển đổi cốt lõi nội dung của ảnh và chữ thành các dãy số AI hiểu được).
-- Tính toán "độ giống nhau" (công thức toán cosine similarity) giữa đặc trưng của ảnh và chữ (chấm thang điểm từ 0 đến 1).
-- Đưa ra quyết định là "Khớp" (Match) hay "Không Khớp" (Mismatch) dựa trên một mức điểm qua hạn mức (ngưỡng - threshold) có thể tự chỉnh.
-- Cung cấp tính năng tải dữ liệu và huấn luyện (train) tập trung vào một mạng nơ-ron phân loại kích thước nhỏ (quy mô phân loại nhị phân) gắn trên phần đỉnh của bộ cấu trúc CLIP.
-- Tự động tính các điểm chuẩn đánh giá mức độ khôn ngoan của mô hình (Độ chính xác tỷ lệ - Accuracy, Precision, Recall, F1) và vẽ các biểu đồ trực quan (ví dụ: ma trận nhầm lẫn - confusion matrices, biểu đồ phân bố điểm - score distributions).
-- Cấu trúc thư mục được quy hoạch gọn gàng, chia mô-đun chức năng dễ hiểu, có bắt lỗi (Error handling) và hỗ trợ chạy bằng phần cứng đồ họa máy tính tốc độ cao (GPU). Rất thích hợp cho các bạn thực tập sinh học hỏi cách thức đưa một dự án vào thực tế!
+## ── Quy trình Hoạt động của Hệ thống ──────────────────────────
 
-## 2. Các bước Cài đặt ban đầu
+```mermaid
+graph TD
+    %% Khai báo dữ liệu đầu vào
+    subgraph Input [" Dữ liệu Đầu vào "]
+        Img[Ảnh thực tế]
+        Txt[Câu chú thích / Caption]
+    end
 
-1. Xin hãy tải (clone) hoặc giải nén toàn bộ thư mục dự án này vào `D:\ITMD`.
-2. Đảm bảo máy tính của bạn đã cài đặt ngôn ngữ Python (Bản 3.10 trở lên lân cận nhất).
-3. Mở cửa sổ dòng lệnh (Terminal/Command Prompt) tại thư mục dự án và chạy câu lệnh sau để cài tất tần tật các thư viện bổ trợ:
+    %% Bộ tiền xử lý
+    subgraph Preprocessing [" Tiền xử lý "]
+        ImgProc[CLIPImageProcessor]
+        Tok[Tokenizer / BertTokenizer]
+    end
 
-```bash
-pip install -r requirements.txt
+    %% Mạng Backbone
+    subgraph Backbones [" Bộ mã hóa Đặc trưng (Encoders) "]
+        VisionEnc["CLIP Vision Encoder<br>(Trích xuất đặc trưng ảnh)"]
+        TextEnc["DistilBERT / CLIP Text Encoder<br>(Trích xuất đặc trưng chữ)"]
+        DenseProj["Text Projection Layer<br>(Ánh xạ văn bản về không gian CLIP)"]
+    end
+
+    %% Kết hợp đặc trưng
+    subgraph FeatureFusion [" Kết hợp Đặc trưng (Fusion) "]
+        Combine["Ghép vector đặc trưng theo 4 chiều:<br>1. Normal(Image)<br>2. Normal(Text)<br>3. Difference (Image - Text)<br>4. Product (Image * Text)"]
+    end
+
+    %% Phân loại đầu ra
+    subgraph Classifier [" Bộ phân loại sâu (Classifier Head) "]
+        Linear1[Linear + LayerNorm + GELU]
+        Drop[Dropout]
+        Linear2[Linear + GELU]
+        Out[Linear -> Sigmoid]
+    end
+
+    %% Luồng kết nối
+    Img --> ImgProc --> VisionEnc
+    Txt --> Tok --> TextEnc --> DenseProj
+    
+    VisionEnc --> Combine
+    DenseProj --> Combine
+    
+    Combine --> Linear1 --> Drop --> Linear2 --> Out
+    
+    Out -->|Score >= Threshold| Match["MATCH (Khớp)"]
+    Out -->|Score < Threshold| Mismatch["MISMATCH (Lệch)"]
+
+    %% Định dạng CSS cho biểu đồ
+    style Input fill:#f9f,stroke:#333,stroke-width:2px
+    style Preprocessing fill:#bbf,stroke:#333,stroke-width:2px
+    style Backbones fill:#dfd,stroke:#333,stroke-width:2px
+    style FeatureFusion fill:#ffd,stroke:#333,stroke-width:2px
+    style Classifier fill:#fdd,stroke:#333,stroke-width:2px
 ```
 
-## 3. Cách Chuẩn bị Dữ liệu (Dataset)
+---
 
-Để dạy cho AI (huấn luyện/train), bạn cần gom các file hình bạn có vào thư mục `data/images/` và tạo một file bảng tính định dạng CSV có tên là `captions.csv` cất vào đường dẫn `data/captions.csv`.
+## ── Tính năng Nổi bật ────────────────────────────────────────
 
-File bài tập `captions.csv` này bắt buộc chứa đúng 3 cột (ngăn nhau bằng dấu phẩy):
-- `image_path`: Tên file của bức ảnh (ví dụ: `image1.jpg`)
-- `caption`: Câu văn hoặc đoạn văn miêu tả bức ảnh đó
-- `label`: Nhãn kết quả làm đáp án cho AI học (0 = Sai / Không khớp, 1 = Đúng / Mức độ khớp cao)
+* **Hỗ trợ song song cấu trúc động (Dynamic Dual-Architecture):** Tự động chuyển đổi giữa English CLIP gốc (`openai/clip-vit-base-patch32`) và Multilingual CLIP (`sentence-transformers/clip-ViT-B-32-multilingual-v1` kết hợp CLIP Vision) dựa trên tệp cấu hình.
+* **Tự động sinh mẫu âm động (Online Hard Negative Mining):** Áp dụng kỹ thuật tráo đổi Caption ngẫu nhiên xoay vòng (`torch.roll`) bên trong từng Batch trên GPU để tự động sinh ra các mẫu Mismatch (nhãn `0`) chất lượng cao với chi phí I/O bằng không.
+* **Huấn luyện tinh chỉnh từng phần (Selective Fine-Tuning):** Đóng băng mô hình chính và chỉ mở khóa $N$ lớp Transformer cuối cùng (ở cả Vision Encoder và Text Encoder) cùng tầng chiếu tuyến tính để giảm thiểu tối đa hiện tượng quên lãng thảm họa (catastrophic forgetting).
+* **Quy trình chuẩn bị dữ liệu dịch tự động:** Script dịch tích hợp sẵn mô hình HuggingFace `Helsinki-NLP/opus-mt-en-vi` tăng tốc GPU để dịch toàn bộ dataset tiếng Anh và tự động tải ảnh mẫu chất lượng cao từ COCO dataset.
+* **Tính toán chỉ số và trực quan hóa chi tiết:** Tự động tìm ngưỡng tối ưu bằng Youden's J Statistic, vẽ ma trận nhầm lẫn (Confusion Matrix), phân phối điểm tương đồng (Similarity Distribution) và đường cong ROC (AUC-ROC) trên tập Validation.
 
-**Một ví dụ về dữ liệu bên trong `captions.csv`:**
-```csv
-image_path,caption,label
-dog.jpg,Một chú chó nâu dễ thương đang chơi đùa trên bãi cỏ,1
-car.png,Chiếc xe thể thao màu xanh đang chạy tốc độ cao,1
-cat.jpg,Một con voi đang dùng vòi uống nước,0
+---
+
+## ── Cấu trúc Thư mục Dự án ────────────────────────────────────
+
+```text
+├── configs/
+│   └── config.py          # Quản lý siêu tham số và đường dẫn dự án
+├── data/
+│   ├── images/            # Thư mục lưu trữ ảnh huấn luyện và kiểm thử
+│   ├── download_7000_vi.py # Script tải ảnh COCO và dịch tự động
+│   └── captions_vi_4000.csv # File nhãn dữ liệu sau khi xử lý Việt ngữ
+├── dataset/
+│   └── dataset_loader.py  # Dataset class với tính năng Augmentation và lọc ảnh lỗi
+├── inference/
+│   └── predict.py         # Script chạy suy luận nhanh cho ảnh và văn bản đơn lẻ
+├── models/
+│   └── clip_model.py      # Định nghĩa mô hình, Processor lai và Classifier Head
+├── outputs/               # Lưu trữ mô hình huấn luyện và biểu đồ thống kê
+│   ├── best_model.pth     # File trọng số mô hình tốt nhất
+│   ├── confusion_matrix.png
+│   ├── similarity_distribution.png
+│   └── roc_curve.png
+├── training/
+│   └── train.py           # Vòng lặp huấn luyện, validation và tính ngưỡng tối ưu
+├── utils/
+│   ├── metrics.py         # Tính toán F1, Accuracy, Recall, Precision và AUC
+│   └── similarity.py      # Hàm tính độ tương đồng cosine
+├── visualization/
+│   └── visualize.py       # Code vẽ biểu đồ với Seaborn & Matplotlib
+├── app.py                 # API Backend Flask phục vụ ứng dụng Web
+├── main.py                # Pipeline kiểm thử môi trường và demo dự đoán nhanh
+└── README.md
 ```
 
-## 4. Hướng dẫn Dạy AI (Huấn luyện / Training)
+---
 
-Nếu bạn muốn mở khóa tính năng tự học nâng cao của việc huấn luyện bộ phân loại để AI bám sát tình hình hình ảnh thực tế công ty bạn đang có:
+## ── Cài đặt ban đầu ───────────────────────────────────────────
 
-1. Đảm bảo file `captions.csv` và thư mục ảnh đã được sắp xếp chính xác.
-2. Mở file thư mục bối cảnh `configs/config.py` để chỉnh sửa các thông số kỹ thuật tối ưu như: số ảnh học cùng 1 dợt (batch size), tốc độ học hằng phẩy (learning rate), số lượt học quay vòng toàn cuốn sách (epochs) nếu muốn thay đổi.
-3. Kích hoạt chạy lệnh sau trên Terminal:
-
-```bash
-python training/train.py
+### 1. Khởi tạo môi trường ảo Python
+Khuyến nghị sử dụng Python 3.10 trở lên:
+```powershell
+python -m venv venv
+.\venv\Scripts\activate
 ```
 
-Hệ thống AI sẽ tự động kích hoạt học đi học lại! Tích hợp tiến trình theo dõi thời gian và vòng lặp (tqdm progress), nhẩm tính và đo đạc lại năng lực, sau đó nó sẽ tự động chắt lọc và sao lưu bộ não xịn nhất của nó với tên file `best_model.pth` lưu vào thư mục `outputs/`, đương nhiên là kèm theo cả các biểu phác thảo huấn luyện để bạn chèn vào báo cáo.
-
-## 5. Hướng dẫn Chạy Suy luận Dự đoán Thực Tế (Inference / Predict)
-
-Bạn có thể ra đề bài ép AI trả lời ngay tức thì xem một tấm hình và đoạn văn lạ bất kỳ có ăn khớp nhau không bằng giao diện điều khiển dòng lệnh. Quy trình này hoạt động bằng cách chiết xuất sự tương đồng theo góc hướng ma trận hình học (cosine-similarity) nguyên bản và tự so với điểm vượt qua khóa vạch. Nếu ở bước 4 bạn có cho AI học trọng số tuỳ chỉnh, lệnh này cũng rất khôn khi tự gọi đúng bộ não nhân tinh xảo vừa dạy ra để làm việc.
-
-```bash
-python inference/predict.py --image duong_dan/toi/anh_bat_ky_cua_ban.jpg --text "Câu nội dung caption mà bạn muốn kiểm tra"
+### 2. Cài đặt các thư viện phụ thuộc
+Cài đặt PyTorch hỗ trợ GPU CUDA và các thư viện xử lý ảnh, NLP:
+```powershell
+pip install torch torchvision transformers huggingface_hub safetensors pandas pillow requests tqdm flask flask-cors scikit-learn matplotlib seaborn sentencepiece
 ```
 
-Bạn cũng có thể bắt AI phải khắc khe hơn (hoặc dễ tính hơn) bằng cách tự chèn bộ số (ví dụ: `0.4`) đè lên khung qua ải mặc định (mặc định trong config là `0.25`):
-```bash
-python inference/predict.py --image duong_dan/toi/anh.jpg --text "Nội dung caption" --threshold 0.4
+---
+
+## ── Chuẩn bị Dữ liệu Việt ngữ ───────────────────────────────
+
+Dự án sử dụng cơ sở dữ liệu song ngữ hoặc thuần Việt. Bạn có thể tự động tải và dịch hàng ngàn ảnh chất lượng từ COCO dataset về máy bằng cách chạy:
+
+```powershell
+.\venv\Scripts\python data/download_7000_vi.py
+```
+* **Chức năng:** Tải thêm các ảnh mới từ COCO train2017, dịch song song tự động trên GPU sang Tiếng Việt và gộp với bộ dữ liệu gốc để tạo ra tệp nhãn đồng nhất [captions_vi_4000.csv](file:///d:/ITMD/data/captions_vi_4000.csv).
+
+---
+
+## ── Cấu hình Mô hình (`configs/config.py`) ────────────────────
+
+Trước khi chạy, bạn hãy mở tệp [config.py](file:///d:/ITMD/configs/config.py) để lựa chọn cấu hình hệ thống:
+
+```python
+# 1. Chạy đa ngôn ngữ (Tiếng Việt & Anh kết hợp)
+MODEL_NAME = "sentence-transformers/clip-ViT-B-32-multilingual-v1"
+
+# 2. Hoặc chạy mô hình Tiếng Anh gốc (OpenAI CLIP)
+# MODEL_NAME = "openai/clip-vit-base-patch32"
+
+# Các cấu hình huấn luyện quan trọng khác:
+BATCH_SIZE = 32
+ENABLE_BATCH_NEGATIVES = True  # Tự động tạo mẫu âm khi train và validation
+NUM_UNFREEZE_LAYERS = 2        # Số lớp cuối cùng mở băng để fine-tune
 ```
 
-## 6. Sổ tay tra cứu câu lệnh
+---
 
-**1. Lệnh gọi toàn bộ quy trình mồi khép kín cho máy tự diễn tập để người mới quan sát:**
-```bash
-python main.py
-```
+## ── Huấn luyện & Đánh giá (Training Pipeline) ─────────────────
 
-**2. Lệnh yêu cầu phán đoán thông qua cách nhập đường dẫn thủ công vào Terminal (CLI):**
-```bash
-python inference/predict.py --image data/images/sample.jpg --text "Một bức tranh minh họa con trâu"
-```
+Chương trình huấn luyện tích hợp sẵn tính năng tự động khôi phục (Resume) từ checkpoint tốt nhất nếu kiến trúc tương thích, đồng thời tự động tắt nếu phát hiện kiến trúc không tương thích và cảnh báo để train lại từ đầu.
 
-**Ví dụ khi AI trả lời lại cho người xem:**
-```
-Similarity score: 0.82
-Prediction: MATCH
+```powershell
+# Chạy huấn luyện (tự động chia 90% train, 10% validation)
+.\venv\Scripts\python training/train.py
+
+# Huấn luyện tiếp tục từ checkpoint hiện có
+.\venv\Scripts\python training/train.py --resume
 ```
 
-**3. Khởi động nhà máy luyện cấp cho mô hình (Training):**
-```bash
-python training/train.py
+### Quá trình đánh giá cuối Epoch bao gồm:
+1. Tính toán đầy đủ **Accuracy, F1-Score, Precision, Recall và AUC-ROC**.
+2. Tìm ngưỡng Sigmoid tối ưu nhất dựa trên **Youden's J Statistic** (phương pháp tối đa hóa sự chênh lệch giữa TPR và FPR).
+3. Xuất các trực quan hóa tại thư mục `outputs/`:
+   * **`confusion_matrix.png`**: Đánh giá chi tiết tỉ lệ phân loại sai.
+   * **`similarity_distribution.png`**: Phân phối điểm số tương đồng của cặp Match vs Mismatch.
+   * **`roc_curve.png`**: Đường cong đặc trưng hoạt động của bộ nhận dạng với chỉ số AUC thực tế.
+
+---
+
+## ── Chạy Suy luận & Dự đoán (Inference) ───────────────────────
+
+### Chạy demo kiểm thử nhanh toàn bộ luồng
+```powershell
+.\venv\Scripts\python main.py
 ```
+
+### Chạy dự đoán cho 1 cặp ảnh - văn bản tùy ý qua CLI
+```powershell
+.\venv\Scripts\python inference/predict.py --image data/images/sample_red.jpg --text "Một hình vuông màu đỏ trên màn hình."
+```
+* **Lưu ý:** Ngưỡng phân loại mặc định sẽ tự động lấy từ giá trị `CLASSIFIER_THRESHOLD` tối ưu trong file config. Bạn có thể ghi đè ngưỡng này bằng cách bổ sung `--threshold 0.45`.
+
+---
+
+## ── Khởi động API Server cho Frontend ─────────────────────────
+
+Để tích hợp hệ thống phát hiện không khớp này vào ứng dụng web Frontend, bạn hãy khởi chạy dịch vụ Flask API:
+
+```powershell
+.\venv\Scripts\python app.py
+```
+* **API Endpoint:** `POST http://localhost:5000/api/predict`
+* **Tham số nhận vào (Multipart Form Data):**
+  * `image`: Tệp tin ảnh đầu vào.
+  * `text`: Chuỗi văn bản/chú thích cần kiểm tra.
+* **Dữ liệu trả về (JSON):**
+  ```json
+  {
+    "status": "success",
+    "similarity": 0.9142,
+    "prediction": "MATCH",
+    "threshold": 0.4268
+  }
+  ```

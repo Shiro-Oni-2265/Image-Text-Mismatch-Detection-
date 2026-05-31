@@ -91,8 +91,13 @@ def train():
 
     if '--resume' in sys.argv and os.path.exists(checkpoint_path):
         print(f"Nạp lại checkpoint từ {checkpoint_path} để học tiếp...")
-        model.load_state_dict(torch.load(checkpoint_path, map_location=device))
-        print("Đã nạp thành công, tiếp tục huấn luyện!")
+        try:
+            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+            print("Đã nạp thành công, tiếp tục huấn luyện!")
+        except Exception as e:
+            print(f"\n[CẢNH BÁO] Không thể nạp checkpoint do kiến trúc mô hình không khớp (ví dụ: chuyển từ English CLIP sang Multilingual CLIP hoặc ngược lại).")
+            print(f"Chi tiết lỗi: {e}")
+            print("Chương trình sẽ tiến hành huấn luyện lại từ đầu!\n")
 
     # ── Dataset ──────────────────────────────────────────────────────────────
     print("Loading dataset...")
@@ -140,13 +145,20 @@ def train():
 
     # ── Optimizer: learning rate riêng cho classifier vs CLIP fine-tune ───────
     clip_finetune_lr = getattr(Config, "CLIP_FINETUNE_LR", 5e-6)
-    clip_trainable = [p for p in model.clip.parameters() if p.requires_grad]
+    
+    backbone_trainable = []
+    if hasattr(model, 'clip'):
+        backbone_trainable.extend([p for p in model.clip.parameters() if p.requires_grad])
+    if hasattr(model, 'text_model'):
+        backbone_trainable.extend([p for p in model.text_model.parameters() if p.requires_grad])
+    if hasattr(model, 'text_projection'):
+        backbone_trainable.extend([p for p in model.text_projection.parameters() if p.requires_grad])
 
     param_groups = [
         {'params': model.classifier.parameters(), 'lr': Config.LEARNING_RATE},
     ]
-    if clip_trainable:
-        param_groups.append({'params': clip_trainable, 'lr': clip_finetune_lr})
+    if backbone_trainable:
+        param_groups.append({'params': backbone_trainable, 'lr': clip_finetune_lr})
 
     optimizer = torch.optim.AdamW(param_groups, weight_decay=1e-4)
 
@@ -231,6 +243,12 @@ def train():
                     v_attention_mask = vbatch['attention_mask'].to(device)
                     v_pixel_values = vbatch['pixel_values'].to(device)
                     v_labels = vbatch['label'].unsqueeze(1).to(device)
+
+                    if getattr(Config, "ENABLE_BATCH_NEGATIVES", False):
+                        v_input_ids, v_attention_mask, v_pixel_values, v_labels = _make_batch_negatives(
+                            v_input_ids, v_attention_mask, v_pixel_values, v_labels,
+                            negative_ratio=getattr(Config, "NEGATIVE_RATIO", 1.0),
+                        )
 
                     if use_amp:
                         with torch.cuda.amp.autocast():

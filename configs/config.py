@@ -29,7 +29,7 @@ class Config:
     # Nếu chỉ dùng tiếng Anh, thay bằng "openai/clip-vit-large-patch14".
     # CLIP backbone. M-CLIP chưa tương thích với transformers 5.x.
     # Hiện tại dùng ViT-B/32. Nâng lên "openai/clip-vit-large-patch14" nếu cần độ chính xác cao hơn.
-    MODEL_NAME = "openai/clip-vit-base-patch32"
+    MODEL_NAME = "sentence-transformers/clip-ViT-B-32-multilingual-v1"
 
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -39,7 +39,7 @@ class Config:
     # Dùng classifier head thay vì cosine similarity (chỉ có hiệu lực khi checkpoint tồn tại)
     USE_CLASSIFIER_IN_INFERENCE = True
     # Ngưỡng sigmoid của classifier head
-    CLASSIFIER_THRESHOLD = 0.2268  # tối ưu từ validation set (Youden's J)
+    CLASSIFIER_THRESHOLD = 0.4268  # tối ưu từ validation set (Youden's J) của Multilingual CLIP
 
     # ── Tham số huấn luyện (Training) ────────────────────────────────────────
     BATCH_SIZE = 32
