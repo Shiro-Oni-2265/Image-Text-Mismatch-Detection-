@@ -196,16 +196,23 @@ Chương trình huấn luyện tích hợp sẵn tính năng tự động khôi 
 
 ---
 
-## ── Khởi động API Server cho Frontend ─────────────────────────
+## ── Hướng dẫn Chạy Tích hợp Frontend & Backend ──────────────────
 
-Dự án cung cấp một dịch vụ Flask API để kết nối trực tiếp với giao diện người dùng (Frontend):
+Để chạy và sử dụng hoàn chỉnh ứng dụng Web có kết nối AI, hãy thực hiện theo các bước sau:
 
+### Bước 1: Khởi động AI API Server (Lắng nghe tại cổng 5000)
+Mở một Terminal mới tại thư mục gốc dự án `ITMD` và chạy:
 ```powershell
-.\venv\Scripts\python app.py
-```
-Dịch vụ sẽ tự động nạp mô hình AI (Multilingual CLIP) cùng checkpoint tốt nhất và lắng nghe tại cổng `http://localhost:5000`.
+# Kích hoạt môi trường ảo nếu chưa kích hoạt
+.\venv\Scripts\activate
 
-* **API Endpoint:** `POST http://localhost:5000/api/predict`
+# Khởi chạy Flask Server chạy AI
+python app.py
+```
+*Dịch vụ sẽ tự động nạp mô hình AI (Multilingual CLIP) cùng checkpoint tốt nhất và lắng nghe tại cổng `http://localhost:5000`.*
+
+**Thông tin cấu hình API (Dành cho việc tích hợp/phát triển thêm):**
+* **Endpoint:** `POST http://localhost:5000/api/predict`
 * **Tham số nhận vào (Multipart Form Data):**
   * `imageFile`: Tệp tin ảnh đầu vào (File upload).
   * `caption`: Chuỗi văn bản/chú thích cần kiểm tra (Text).
@@ -217,23 +224,6 @@ Dịch vụ sẽ tự động nạp mô hình AI (Multilingual CLIP) cùng check
     "suggestedCaption": ""
   }
   ```
-
----
-
-## ── Hướng dẫn Chạy Tích hợp Frontend & Backend ──────────────────
-
-Để chạy và sử dụng hoàn chỉnh ứng dụng có kết nối AI, hãy thực hiện theo đúng các bước sau:
-
-### Bước 1: Khởi động AI Backend (Lắng nghe tại cổng 5000)
-Mở một Terminal mới tại thư mục gốc dự án `ITMD` và chạy:
-```powershell
-# Kích hoạt môi trường ảo nếu chưa kích hoạt
-.\venv\Scripts\activate
-
-# Khởi chạy Flask Server chạy AI
-python app.py
-```
-*Bạn sẽ thấy log thông báo `Loading model for API...` và nạp thành công mô hình cùng checkpoint.*
 
 ### Bước 2: Khởi động Giao diện Web Frontend (Lắng nghe tại cổng 5173)
 Mở thêm **một cửa sổ Terminal thứ hai** tại thư mục gốc dự án `ITMD` và chạy:
