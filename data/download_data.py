@@ -5,6 +5,7 @@ import json
 import random
 import requests
 import torch
+import zipfile
 from tqdm import tqdm
 from transformers import MarianTokenizer, MarianMTModel
 
@@ -97,7 +98,54 @@ else:
             writer = csv.DictWriter(f, fieldnames=["image_path", "caption", "label"])
             writer.writeheader()
 
-# 2. Read COCO Annotations
+def check_and_download_annotations():
+    if os.path.exists(ANNOTATION_PATH):
+        return
+    
+    print(f"\n[INFO] COCO annotations not found at: {ANNOTATION_PATH}")
+    print("[INFO] Attempting to download annotations automatically (approx. 240MB)...")
+    zip_url = "http://images.cocodataset.org/annotations/annotations_trainval2017.zip"
+    zip_path = os.path.join(BASE_DIR, "annotations_trainval2017.zip")
+    
+    # Create parent dir of ANNOTATION_PATH
+    os.makedirs(os.path.dirname(ANNOTATION_PATH), exist_ok=True)
+    
+    try:
+        # Download zip
+        r = requests.get(zip_url, stream=True)
+        total_size = int(r.headers.get('content-length', 0))
+        with open(zip_path, 'wb') as f, tqdm(
+            desc="Downloading COCO annotations",
+            total=total_size,
+            unit='iB',
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as bar:
+            for chunk in r.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    size = f.write(chunk)
+                    bar.update(size)
+        
+        # Unzip
+        print("[INFO] Extracting annotations...")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            # Extract annotations/captions_train2017.json to BASE_DIR
+            zip_ref.extract("annotations/captions_train2017.json", path=BASE_DIR)
+        
+        # Clean up zip file
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+        print("[INFO] Successfully downloaded and extracted COCO annotations.\n")
+    except Exception as e:
+        print(f"\n[ERROR] Failed to download or extract COCO annotations: {e}")
+        print("Please download it manually:")
+        print("1. Download link: http://images.cocodataset.org/annotations/annotations_trainval2017.zip")
+        print(f"2. Extract and place 'captions_train2017.json' inside: {os.path.dirname(ANNOTATION_PATH)}")
+        sys.exit(1)
+
+# 2. Check and Download COCO Annotations
+check_and_download_annotations()
+
 print("[INFO] Reading COCO annotations...")
 with open(ANNOTATION_PATH, "r", encoding="utf-8") as f:
     coco = json.load(f)

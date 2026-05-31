@@ -135,6 +135,9 @@ Dự án sử dụng cơ sở dữ liệu song ngữ hoặc thuần Việt. Bạ
 ```
 * **Chức năng:** Tải thêm các ảnh mới từ COCO train2017, dịch song song tự động trên GPU sang Tiếng Việt và gộp với bộ dữ liệu gốc để tạo ra tệp nhãn đồng nhất [captions_vi.csv](file:///d:/ITMD/data/captions_vi.csv).
 
+> [!NOTE]
+> Khi chạy lần đầu, script [download_data.py](file:///d:/ITMD/data/download_data.py) sẽ tự động tải file nhãn COCO thô (`annotations_trainval2017.zip` khoảng 240MB) từ server của COCO, giải nén tệp `captions_train2017.json` vào thư mục `data/annotations/` và xóa tệp zip rác. Toàn bộ quy trình tải dữ liệu diễn ra hoàn toàn tự động, người dùng mới không cần phải tự chuẩn bị trước dữ liệu gì khác.
+
 ---
 
 ## ── Cấu hình Mô hình (`configs/config.py`) ────────────────────
