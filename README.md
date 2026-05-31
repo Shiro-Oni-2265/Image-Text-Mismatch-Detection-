@@ -55,12 +55,12 @@ graph TD
     Out -->|Score >= Threshold| Match["MATCH (Khớp)"]
     Out -->|Score < Threshold| Mismatch["MISMATCH (Lệch)"]
 
-    %% Định dạng CSS cho biểu đồ
-    style Input fill:#f9f,stroke:#333,stroke-width:2px
-    style Preprocessing fill:#bbf,stroke:#333,stroke-width:2px
-    style Backbones fill:#dfd,stroke:#333,stroke-width:2px
-    style FeatureFusion fill:#ffd,stroke:#333,stroke-width:2px
-    style Classifier fill:#fdd,stroke:#333,stroke-width:2px
+    %% Định dạng CSS cho biểu đồ - Sử dụng stroke viền neon và fill:none (nền trong suốt) để tự động tương thích và hiển thị rõ nét trên cả giao diện Sáng/Tối của GitHub
+    style Input fill:none,stroke:#ff79c6,stroke-width:2px
+    style Preprocessing fill:none,stroke:#8be9fd,stroke-width:2px
+    style Backbones fill:none,stroke:#50fa7b,stroke-width:2px
+    style FeatureFusion fill:none,stroke:#f1fa8c,stroke-width:2px
+    style Classifier fill:none,stroke:#ff5555,stroke-width:2px
 ```
 
 ---
