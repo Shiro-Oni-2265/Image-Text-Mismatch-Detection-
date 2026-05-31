@@ -198,21 +198,60 @@ Chương trình huấn luyện tích hợp sẵn tính năng tự động khôi 
 
 ## ── Khởi động API Server cho Frontend ─────────────────────────
 
-Để tích hợp hệ thống phát hiện không khớp này vào ứng dụng web Frontend, bạn hãy khởi chạy dịch vụ Flask API:
+Dự án cung cấp một dịch vụ Flask API để kết nối trực tiếp với giao diện người dùng (Frontend):
 
 ```powershell
 .\venv\Scripts\python app.py
 ```
+Dịch vụ sẽ tự động nạp mô hình AI (Multilingual CLIP) cùng checkpoint tốt nhất và lắng nghe tại cổng `http://localhost:5000`.
+
 * **API Endpoint:** `POST http://localhost:5000/api/predict`
 * **Tham số nhận vào (Multipart Form Data):**
-  * `image`: Tệp tin ảnh đầu vào.
-  * `text`: Chuỗi văn bản/chú thích cần kiểm tra.
+  * `imageFile`: Tệp tin ảnh đầu vào (File upload).
+  * `caption`: Chuỗi văn bản/chú thích cần kiểm tra (Text).
 * **Dữ liệu trả về (JSON):**
   ```json
   {
-    "status": "success",
-    "similarity": 0.9142,
-    "prediction": "MATCH",
-    "threshold": 0.4268
+    "isMatch": true,
+    "simScore": 0.9142,
+    "suggestedCaption": ""
   }
   ```
+
+---
+
+## ── Hướng dẫn Chạy Tích hợp Frontend & Backend ──────────────────
+
+Để chạy và sử dụng hoàn chỉnh ứng dụng có kết nối AI, hãy thực hiện theo đúng các bước sau:
+
+### Bước 1: Khởi động AI Backend (Lắng nghe tại cổng 5000)
+Mở một Terminal mới tại thư mục gốc dự án `ITMD` và chạy:
+```powershell
+# Kích hoạt môi trường ảo nếu chưa kích hoạt
+.\venv\Scripts\activate
+
+# Khởi chạy Flask Server chạy AI
+python app.py
+```
+*Bạn sẽ thấy log thông báo `Loading model for API...` và nạp thành công mô hình cùng checkpoint.*
+
+### Bước 2: Khởi động Giao diện Web Frontend (Lắng nghe tại cổng 5173)
+Mở thêm **một cửa sổ Terminal thứ hai** tại thư mục gốc dự án `ITMD` và chạy:
+```powershell
+# Di chuyển vào thư mục Frontend
+cd frontend
+
+# Cài đặt thư viện Node.js nếu chạy lần đầu
+npm install
+
+# Khởi chạy giao diện phát triển Vite
+npm run dev
+```
+
+### Bước 3: Truy cập và Kiểm thử kết nối
+1. Mở trình duyệt web của bạn và truy cập địa chỉ: `http://localhost:5173`.
+2. Tải lên một bức ảnh bất kỳ từ máy tính.
+3. Nhập câu mô tả (Tiếng Việt hoặc Tiếng Anh).
+4. Nhấn nút kiểm tra trên giao diện.
+5. Giao diện Frontend sẽ gửi yêu cầu tới API Backend (`http://localhost:5000/api/predict`) để AI thực hiện suy luận. Bạn sẽ thấy kết quả phân loại Khớp/Lệch cùng điểm số tương đồng hiển thị trực quan trên giao diện ngay lập tức!
+
