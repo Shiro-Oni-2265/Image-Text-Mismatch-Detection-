@@ -18,8 +18,8 @@ class Config:
     DATA_DIR = os.path.join(ROOT_DIR, 'data')
     IMAGE_DIR = os.path.join(DATA_DIR, 'images')
     CAPTIONS_FILE = (
-        os.path.join(DATA_DIR, 'captions_vi_4000.csv')
-        if os.path.exists(os.path.join(DATA_DIR, 'captions_vi_4000.csv'))
+        os.path.join(DATA_DIR, 'captions_vi.csv')
+        if os.path.exists(os.path.join(DATA_DIR, 'captions_vi.csv'))
         else os.path.join(DATA_DIR, 'captions.csv')
     )
     OUTPUT_DIR = os.path.join(ROOT_DIR, 'outputs')

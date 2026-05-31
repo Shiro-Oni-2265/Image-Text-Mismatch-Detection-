@@ -16,7 +16,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_DIR = os.path.join(BASE_DIR, "images")
 ANNOTATION_PATH = os.path.join(BASE_DIR, "annotations", "captions_train2017.json")
 INPUT_CSV = os.path.join(BASE_DIR, "captions.csv")
-OUTPUT_CSV = os.path.join(BASE_DIR, "captions_vi_4000.csv")
+OUTPUT_CSV = os.path.join(BASE_DIR, "captions_vi.csv")
 
 NUM_NEW_IMAGES = 7000
 DOWNLOAD_TIMEOUT = 15

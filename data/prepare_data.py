@@ -1,10 +1,10 @@
-﻿import os, json, csv, random, requests
+import os, json, csv, random, requests
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 IMAGE_DIR = "data/images"
 ANNOTATION_PATH = "data/annotations/captions_train2017.json"
-OUTPUT_CSV = "data/captions_vi_4000.csv"
+OUTPUT_CSV = "data/captions_vi.csv"
 NUM_IMAGES = 4000
 
 os.makedirs(IMAGE_DIR, exist_ok=True)
