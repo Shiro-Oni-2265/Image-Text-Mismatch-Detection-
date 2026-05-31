@@ -103,7 +103,6 @@ graph TD
 ├── visualization/
 │   └── visualize.py       # Code vẽ biểu đồ với Seaborn & Matplotlib
 ├── app.py                 # API Backend Flask phục vụ ứng dụng Web
-├── main.py                # Pipeline kiểm thử môi trường và demo dự đoán nhanh
 └── README.md
 ```
 
@@ -182,11 +181,6 @@ Chương trình huấn luyện tích hợp sẵn tính năng tự động khôi 
 ---
 
 ## ── Chạy Suy luận & Dự đoán (Inference) ───────────────────────
-
-### Chạy demo kiểm thử nhanh toàn bộ luồng
-```powershell
-.\venv\Scripts\python main.py
-```
 
 ### Chạy dự đoán cho 1 cặp ảnh - văn bản tùy ý qua CLI
 ```powershell
