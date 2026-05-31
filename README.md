@@ -82,7 +82,7 @@ graph TD
 │   └── config.py          # Quản lý siêu tham số và đường dẫn dự án
 ├── data/
 │   ├── images/            # Thư mục lưu trữ ảnh huấn luyện và kiểm thử
-│   ├── download_7000_vi.py # Script tải ảnh COCO và dịch tự động
+│   ├── download_data.py   # Script tải ảnh COCO và dịch tự động
 │   └── captions_vi.csv     # File nhãn dữ liệu sau khi xử lý Việt ngữ
 ├── dataset/
 │   └── dataset_loader.py  # Dataset class với tính năng Augmentation và lọc ảnh lỗi
@@ -131,7 +131,7 @@ pip install torch torchvision transformers huggingface_hub safetensors pandas pi
 Dự án sử dụng cơ sở dữ liệu song ngữ hoặc thuần Việt. Bạn có thể tự động tải và dịch hàng ngàn ảnh chất lượng từ COCO dataset về máy bằng cách chạy:
 
 ```powershell
-.\venv\Scripts\python data/download_7000_vi.py
+.\venv\Scripts\python data/download_data.py
 ```
 * **Chức năng:** Tải thêm các ảnh mới từ COCO train2017, dịch song song tự động trên GPU sang Tiếng Việt và gộp với bộ dữ liệu gốc để tạo ra tệp nhãn đồng nhất [captions_vi.csv](file:///d:/ITMD/data/captions_vi.csv).
 
