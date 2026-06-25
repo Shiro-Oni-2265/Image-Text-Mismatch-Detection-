@@ -1,13 +1,15 @@
-# Image-Text Mismatch Detection (ITMD) Pipeline
+# Image-Text Mismatch Detection (ITMD)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Hệ thống học sâu hoàn chỉnh (End-to-End Deep Learning Pipeline) chuyên dụng cho tác vụ **Phát hiện Không khớp Ảnh-Chữ (Image-Text Mismatch Detection - ITMD)**. Dự án được tối ưu hóa để hỗ trợ cả mô hình CLIP tiếng Anh chuẩn và mô hình CLIP đa ngôn ngữ (chuyên tiếng Việt) nhờ khả năng chuyển đổi kiến trúc động linh hoạt.
+ITMD là một project kiểm tra xem **một bức ảnh** và **một câu mô tả** có thật sự khớp với nhau hay không. Thay vì chỉ so sánh bằng từ khóa, hệ thống dùng CLIP, text encoder đa ngôn ngữ và một classifier head để đưa ra kết quả `MATCH` hoặc `MISMATCH`.
+
+Dự án có đủ các phần chính: pipeline chuẩn bị dữ liệu, training, inference bằng CLI, Flask API và giao diện web bằng React. Nếu có checkpoint trong `outputs/best_model.pth`, hệ thống sẽ dùng model đã fine-tune; nếu chưa có checkpoint, nó vẫn có thể chạy ở chế độ so sánh cosine similarity.
 
 ---
 
-## ── Quy trình Hoạt động của Hệ thống ──────────────────────────
+## Quy trình hoạt động
 
 ```mermaid
 graph TD
@@ -65,17 +67,18 @@ graph TD
 
 ---
 
-## ── Tính năng Nổi bật ────────────────────────────────────────
+## Project này làm được gì?
 
-* **Hỗ trợ song song cấu trúc động (Dynamic Dual-Architecture):** Tự động chuyển đổi giữa English CLIP gốc (`openai/clip-vit-base-patch32`) và Multilingual CLIP (`sentence-transformers/clip-ViT-B-32-multilingual-v1` kết hợp CLIP Vision) dựa trên tệp cấu hình.
-* **Tự động sinh mẫu âm động (Online Hard Negative Mining):** Áp dụng kỹ thuật tráo đổi Caption ngẫu nhiên xoay vòng (`torch.roll`) bên trong từng Batch trên GPU để tự động sinh ra các mẫu Mismatch (nhãn `0`) chất lượng cao với chi phí I/O bằng không.
-* **Huấn luyện tinh chỉnh từng phần (Selective Fine-Tuning):** Đóng băng mô hình chính và chỉ mở khóa $N$ lớp Transformer cuối cùng (ở cả Vision Encoder và Text Encoder) cùng tầng chiếu tuyến tính để giảm thiểu tối đa hiện tượng quên lãng thảm họa (catastrophic forgetting).
-* **Quy trình chuẩn bị dữ liệu dịch tự động:** Script dịch tích hợp sẵn mô hình HuggingFace `Helsinki-NLP/opus-mt-en-vi` tăng tốc GPU để dịch toàn bộ dataset tiếng Anh và tự động tải ảnh mẫu chất lượng cao từ COCO dataset.
-* **Tính toán chỉ số và trực quan hóa chi tiết:** Tự động tìm ngưỡng tối ưu bằng Youden's J Statistic, vẽ ma trận nhầm lẫn (Confusion Matrix), phân phối điểm tương đồng (Similarity Distribution) và đường cong ROC (AUC-ROC) trên tập Validation.
+* Kiểm tra một cặp ảnh - caption và trả về kết quả khớp hoặc không khớp.
+* Hỗ trợ cả tiếng Việt và tiếng Anh thông qua Multilingual CLIP.
+* Có script tải ảnh COCO và dịch caption sang tiếng Việt để tạo thêm dữ liệu.
+* Có training pipeline riêng, bao gồm validation, hard negative mining, early stopping và lưu checkpoint tốt nhất.
+* Có biểu đồ đánh giá như confusion matrix, ROC curve và phân phối điểm số.
+* Có API Flask và frontend React để dùng thử trực tiếp trên trình duyệt.
 
 ---
 
-## ── Cấu trúc Thư mục Dự án ────────────────────────────────────
+## Cấu trúc thư mục
 
 ```text
 ├── configs/
@@ -108,40 +111,67 @@ graph TD
 
 ---
 
-## ── Cài đặt ban đầu ───────────────────────────────────────────
+## Cần chuẩn bị gì trước?
+
+- Python 3.10 trở lên.
+- Node.js 18 trở lên để chạy frontend.
+- GPU CUDA được khuyến nghị nếu train hoặc inference với dữ liệu lớn.
+- Dung lượng ổ đĩa đủ lớn nếu lưu dataset COCO, checkpoint và output model.
+
+Nếu chỉ chạy thử giao diện với API đã có checkpoint, máy CPU vẫn có thể dùng được, nhưng tốc độ sẽ chậm hơn GPU khá nhiều.
+
+## Cài đặt backend Python
 
 ### 1. Khởi tạo môi trường ảo Python
-Khuyến nghị sử dụng Python 3.10 trở lên:
+Tại thư mục gốc project, tạo môi trường ảo:
 ```powershell
 python -m venv venv
 .\venv\Scripts\activate
 ```
 
-### 2. Cài đặt các thư viện phụ thuộc
-Cài đặt PyTorch hỗ trợ GPU CUDA và các thư viện xử lý ảnh, NLP:
+### 2. Cài đặt thư viện cần dùng
+Project hiện chưa có `requirements.txt`, nên có thể cài trực tiếp các thư viện chính như sau:
 ```powershell
 pip install torch torchvision transformers huggingface_hub safetensors pandas pillow requests tqdm flask flask-cors scikit-learn matplotlib seaborn sentencepiece
 ```
 
+> Nếu muốn dùng GPU, nên cài PyTorch theo đúng phiên bản CUDA trên máy của bạn.
+
 ---
 
-## ── Chuẩn bị Dữ liệu Việt ngữ ───────────────────────────────
+## Chuẩn bị dữ liệu
 
-Dự án sử dụng cơ sở dữ liệu song ngữ hoặc thuần Việt. Bạn có thể tự động tải và dịch hàng ngàn ảnh chất lượng từ COCO dataset về máy bằng cách chạy:
+Model cần một file CSV mô tả các cặp ảnh - caption. Mặc định project sẽ ưu tiên đọc `data/captions_vi.csv`; nếu file này chưa có thì sẽ thử dùng `data/captions.csv`.
+
+File CSV nên có dạng:
+
+```csv
+image_path,caption,label
+000000000009.jpg,"Một người đang đứng ngoài trời.",1
+000000000025.jpg,"Một chiếc xe đang chạy trên đường.",0
+```
+
+Ý nghĩa các cột:
+
+- `image_path`: tên file ảnh nằm trong `data/images/`.
+- `caption`: mô tả văn bản cần so khớp với ảnh.
+- `label`: `1` là ảnh và caption khớp, `0` là không khớp.
+
+Nếu muốn tạo thêm dữ liệu từ COCO, chạy:
 
 ```powershell
 .\venv\Scripts\python data/download_data.py
 ```
-* **Chức năng:** Tải thêm các ảnh mới từ COCO train2017, dịch song song tự động trên GPU sang Tiếng Việt và gộp với bộ dữ liệu gốc để tạo ra tệp nhãn đồng nhất [captions_vi.csv](file:///d:/ITMD/data/captions_vi.csv).
+Script này sẽ tải ảnh từ COCO train2017, dịch caption sang tiếng Việt và ghi kết quả vào `data/captions_vi.csv`.
 
 > [!NOTE]
-> Khi chạy lần đầu, script [download_data.py](file:///d:/ITMD/data/download_data.py) sẽ tự động tải file nhãn COCO thô (`annotations_trainval2017.zip` khoảng 240MB) từ server của COCO, giải nén tệp `captions_train2017.json` vào thư mục `data/annotations/` và xóa tệp zip rác. Toàn bộ quy trình tải dữ liệu diễn ra hoàn toàn tự động, người dùng mới không cần phải tự chuẩn bị trước dữ liệu gì khác.
+> Lần chạy đầu tiên có thể khá lâu vì script cần tải annotation COCO (`annotations_trainval2017.zip`, khoảng 240MB), giải nén `captions_train2017.json` vào `data/annotations/`, rồi mới bắt đầu xử lý dữ liệu.
 
 ---
 
-## ── Cấu hình Mô hình (`configs/config.py`) ────────────────────
+## Cấu hình model
 
-Trước khi chạy, bạn hãy mở tệp [config.py](file:///d:/ITMD/configs/config.py) để lựa chọn cấu hình hệ thống:
+Các tham số quan trọng nằm trong `configs/config.py`. Đây là nơi chọn model, batch size, số epoch, threshold và một số tuỳ chọn training.
 
 ```python
 # 1. Chạy đa ngôn ngữ (Tiếng Việt & Anh kết hợp)
@@ -158,19 +188,23 @@ NUM_UNFREEZE_LAYERS = 2        # Số lớp cuối cùng mở băng để fine-t
 
 ---
 
-## ── Huấn luyện & Đánh giá (Training Pipeline) ─────────────────
+## Huấn luyện và đánh giá
 
-Chương trình huấn luyện tích hợp sẵn tính năng tự động khôi phục (Resume) từ checkpoint tốt nhất nếu kiến trúc tương thích, đồng thời tự động tắt nếu phát hiện kiến trúc không tương thích và cảnh báo để train lại từ đầu.
+Khi dữ liệu đã sẵn sàng, có thể train model bằng lệnh:
 
 ```powershell
-# Chạy huấn luyện (tự động chia 90% train, 10% validation)
 .\venv\Scripts\python training/train.py
+```
 
-# Huấn luyện tiếp tục từ checkpoint hiện có
+Nếu đã có checkpoint và muốn train tiếp:
+
+```powershell
 .\venv\Scripts\python training/train.py --resume
 ```
 
-### Quá trình đánh giá cuối Epoch bao gồm:
+Trong quá trình train, project sẽ tự chia train/validation theo cấu hình, tự lưu checkpoint tốt nhất và xuất biểu đồ đánh giá vào `outputs/`.
+
+Các chỉ số được tính gồm:
 1. Tính toán đầy đủ **Accuracy, F1-Score, Precision, Recall và AUC-ROC**.
 2. Tìm ngưỡng Sigmoid tối ưu nhất dựa trên **Youden's J Statistic** (phương pháp tối đa hóa sự chênh lệch giữa TPR và FPR).
 3. Xuất các trực quan hóa tại thư mục `outputs/`:
@@ -180,21 +214,25 @@ Chương trình huấn luyện tích hợp sẵn tính năng tự động khôi 
 
 ---
 
-## ── Chạy Suy luận & Dự đoán (Inference) ───────────────────────
+## Chạy thử bằng dòng lệnh
 
-### Chạy dự đoán cho 1 cặp ảnh - văn bản tùy ý qua CLI
 ```powershell
 .\venv\Scripts\python inference/predict.py --image data/images/sample_red.jpg --text "Một hình vuông màu đỏ trên màn hình."
 ```
-* **Lưu ý:** Ngưỡng phân loại mặc định sẽ tự động lấy từ giá trị `CLASSIFIER_THRESHOLD` tối ưu trong file config. Bạn có thể ghi đè ngưỡng này bằng cách bổ sung `--threshold 0.45`.
+
+Nếu muốn thử threshold khác:
+
+```powershell
+.\venv\Scripts\python inference/predict.py --image data/images/sample_red.jpg --text "Một hình vuông màu đỏ trên màn hình." --threshold 0.45
+```
 
 ---
 
-## ── Hướng dẫn Chạy Tích hợp Frontend & Backend ──────────────────
+## Chạy backend và frontend
 
 Để chạy và sử dụng hoàn chỉnh ứng dụng Web có kết nối AI, hãy thực hiện theo các bước sau:
 
-### Bước 1: Khởi động AI API Server (Lắng nghe tại cổng 5000)
+### Bước 1: Khởi động AI API server
 Mở một Terminal mới tại thư mục gốc dự án `ITMD` và chạy:
 ```powershell
 # Kích hoạt môi trường ảo nếu chưa kích hoạt
@@ -203,7 +241,7 @@ Mở một Terminal mới tại thư mục gốc dự án `ITMD` và chạy:
 # Khởi chạy Flask Server chạy AI
 python app.py
 ```
-*Dịch vụ sẽ tự động nạp mô hình AI (Multilingual CLIP) cùng checkpoint tốt nhất và lắng nghe tại cổng `http://localhost:5000`.*
+*Dịch vụ sẽ tự động nạp model và checkpoint tốt nhất nếu có tại `outputs/best_model.pth`. Backend mặc định chạy tại `http://localhost:5000`.*
 
 **Thông tin cấu hình API (Dành cho việc tích hợp/phát triển thêm):**
 * **Endpoint:** `POST http://localhost:5000/api/predict`
@@ -219,7 +257,7 @@ python app.py
   }
   ```
 
-### Bước 2: Khởi động Giao diện Web Frontend (Lắng nghe tại cổng 5173)
+### Bước 2: Khởi động frontend
 Mở thêm **một cửa sổ Terminal thứ hai** tại thư mục gốc dự án `ITMD` và chạy:
 ```powershell
 # Di chuyển vào thư mục Frontend
@@ -228,7 +266,7 @@ cd frontend
 # Cài đặt thư viện Node.js nếu chạy lần đầu
 npm install
 
-# Khởi chạy giao diện phát triển Vite
+# Khởi chạy giao diện Vite
 npm run dev
 ```
 
@@ -237,5 +275,19 @@ npm run dev
 2. Tải lên một bức ảnh bất kỳ từ máy tính.
 3. Nhập câu mô tả (Tiếng Việt hoặc Tiếng Anh).
 4. Nhấn nút kiểm tra trên giao diện.
-5. Giao diện Frontend sẽ gửi yêu cầu tới API Backend (`http://localhost:5000/api/predict`) để AI thực hiện suy luận. Bạn sẽ thấy kết quả phân loại Khớp/Lệch cùng điểm số tương đồng hiển thị trực quan trên giao diện ngay lập tức!
+5. Frontend sẽ gửi yêu cầu tới API Backend (`http://localhost:5000/api/predict`) để thực hiện suy luận. Kết quả trả về là `MATCH` hoặc `MISMATCH` kèm điểm số.
 
+## Kiểm tra frontend
+
+```powershell
+cd frontend
+npm run lint
+npm run build
+```
+
+## Lưu ý khi phát triển
+
+- `data/images/`, `data/*.csv`, `outputs/` và checkpoint thường rất lớn nên đã được đưa vào `.gitignore`.
+- Frontend hiện dùng đăng nhập demo bằng `localStorage`, chưa phải hệ thống xác thực production.
+- Flask server đang chạy ở chế độ development. Khi deploy thật cần tắt `debug=True`, giới hạn CORS và chạy qua production WSGI server.
+- Nếu đổi `MODEL_NAME`, checkpoint cũ có thể không tương thích với kiến trúc mới.
